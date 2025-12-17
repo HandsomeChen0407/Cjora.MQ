@@ -4,7 +4,6 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <PackageIcon>D:\code\CJH\Cjora.MQ\Cjora.png</PackageIcon>
     <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <Authors>Cjora.MQ</Authors>
@@ -23,6 +22,7 @@
     <RepositoryType />
     <RepositoryUrl />
     <Version>1.0.0</Version>
+    <PackageIcon />
   </PropertyGroup>
 
   <ItemGroup>
@@ -34,16 +34,4 @@
     <PackageReference Include="MQTTnet" Version="5.0.1.1416" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Cjora.png">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
-    <None Update="README.md">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
-  </ItemGroup>
-
 </Project>
