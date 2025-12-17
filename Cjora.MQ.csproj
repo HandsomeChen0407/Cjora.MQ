@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <PackageIcon>D:\code\CJH\Cjora.MQ\Cjora.MQ\Cjora.png</PackageIcon>
+    <PackageIcon>D:\code\CJH\Cjora.MQ\Cjora.png</PackageIcon>
     <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <Authors>Cjora.MQ</Authors>
