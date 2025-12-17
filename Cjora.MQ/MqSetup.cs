@@ -17,10 +17,8 @@ namespace Cjora.MQ
         /// </summary>
         /// <param name="services">服务集合</param>
         /// <param name="configuration">应用程序配置</param>
-        public static void AddMq(this IServiceCollection services, IConfiguration configuration)
+        public static void AddMq(this IServiceCollection services, MqOptions mqOptions)
         {
-            // 获取配置实例（立即获取用于判断 MQ 类型）
-            var mqOptions = configuration.GetSection("MqOptions").Get<MqOptions>();
             if (mqOptions == null)
                 throw new ArgumentNullException("MqOptions 配置不能为空");
 
