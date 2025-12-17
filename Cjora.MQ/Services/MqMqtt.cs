@@ -87,7 +87,7 @@ namespace Cjora.MQ.Services
             _mqttClientOptions = new MqttClientOptionsBuilder()
                 .WithTcpServer(_mqOptions.ServiceIP, _mqOptions.ServicePort)
                 .WithCredentials(_mqOptions.Username, _mqOptions.Password)
-                .WithKeepAlivePeriod(TimeSpan.FromSeconds(_mqOptions.KeepAliveSeconds))
+                .WithKeepAlivePeriod(TimeSpan.FromSeconds(_mqOptions.Mqtt.KeepAliveSeconds))
                 .Build();
 
             // 注册 MQTT 事件

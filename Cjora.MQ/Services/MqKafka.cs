@@ -88,11 +88,11 @@ namespace Cjora.MQ.Services
             var consumerConfig = new ConsumerConfig
             {
                 BootstrapServers = _mqOptions.ServiceIP,
-                GroupId = _mqOptions.GroupId,
+                GroupId = _mqOptions.Kafka.GroupId,
                 EnableAutoCommit = false,                     // 手动提交 Offset
-                AutoOffsetReset = _mqOptions.AutoOffsetReset,
-                SessionTimeoutMs = _mqOptions.SessionTimeoutMs,
-                MaxPollIntervalMs = _mqOptions.MaxPollIntervalMs
+                AutoOffsetReset = _mqOptions.Kafka.AutoOffsetReset,
+                SessionTimeoutMs = _mqOptions.Kafka.SessionTimeoutMs,
+                MaxPollIntervalMs = _mqOptions.Kafka.MaxPollIntervalMs
             };
 
             _consumer = new ConsumerBuilder<string, byte[]>(consumerConfig)
@@ -107,9 +107,9 @@ namespace Cjora.MQ.Services
             var producerConfig = new ProducerConfig
             {
                 BootstrapServers = _mqOptions.ServiceIP,
-                EnableIdempotence = _mqOptions.EnableIdempotence, // 保证幂等
-                LingerMs = _mqOptions.LingerMs,
-                BatchNumMessages = _mqOptions.BatchNumMessages,
+                EnableIdempotence = _mqOptions.Kafka.EnableIdempotence, // 保证幂等
+                LingerMs = _mqOptions.Kafka.LingerMs,
+                BatchNumMessages = _mqOptions.Kafka.BatchNumMessages,
                 Acks = Acks.All
             };
 
@@ -121,7 +121,7 @@ namespace Cjora.MQ.Services
             _cts = new CancellationTokenSource();
             _consumeLoop = Task.Run(ConsumeLoop, _cts.Token);
 
-            _logger.LogInformation($"[Kafka] 已连接 | Group={_mqOptions.GroupId} | Topics={_mqOptions.SubTopic}");
+            _logger.LogInformation($"[Kafka] 已连接 | Group={_mqOptions.Kafka.GroupId} | Topics={_mqOptions.SubTopic}");
 
             return Task.CompletedTask;
         }
