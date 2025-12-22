@@ -23,7 +23,7 @@ namespace Cjora.MQ
             var mqOptions = section.Get<MqOptions>();
             if (mqOptions == null)
                 throw new ArgumentNullException("MqOptions 配置不能为空");
-            services.Configure<MqOptions>(configuration.GetSection("MqOptions"));
+            services.Configure<MqOptions>(section);
 
 
             // 根据 MQ 类型注册具体实现
