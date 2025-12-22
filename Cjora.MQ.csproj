@@ -17,12 +17,12 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseUrl />
     <PackageProjectUrl>https://github.com/HandsomeChen0407/Cjora.MQ</PackageProjectUrl>
-    <PackageReleaseNotes>支持Mqtt、Kafka</PackageReleaseNotes>
+    <PackageReleaseNotes>兼容net 8版本</PackageReleaseNotes>
     <PackageTags />
     <Product>Cjora.MQ</Product>
     <RepositoryType />
     <RepositoryUrl />
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <PackageIcon />
   </PropertyGroup>
 
