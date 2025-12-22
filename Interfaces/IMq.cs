@@ -1,7 +1,4 @@
 ﻿using Cjora.MQ.Options;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
-using System.Text;
 
 namespace Cjora.MQ.Interfaces;
 
@@ -47,33 +44,4 @@ public interface IMq
     /// <param name="data">消息内容，可以是 string、byte[] 或其他对象。</param>
     /// <returns>异步任务，消息发布完成后返回。</returns>
     Task PublishAsync(string topic, object data);
-
-    #region 辅助方法
-
-    /// <summary>
-    /// 将任意对象转换为 byte[]，支持：
-    /// - byte[] 类型直接返回
-    /// - string 类型转 UTF8
-    /// - 其他对象通过 Newtonsoft.Json 序列化（保持原始大小写）
-    /// </summary>
-    /// <param name="obj">要转换的对象</param>
-    /// <returns>字节数组</returns>
-    protected static byte[] SerializeToBytes(object obj)
-    {
-        if (obj == null) return Array.Empty<byte>();
-
-        return obj switch
-        {
-            byte[] bytes => bytes,
-            string str => Encoding.UTF8.GetBytes(str),
-            _ => Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(obj,
-                new JsonSerializerSettings
-                {
-                    ContractResolver = new DefaultContractResolver(), // 保持原始大小写
-                    NullValueHandling = NullValueHandling.Ignore
-                }))
-        };
-    }
-
-    #endregion
 }

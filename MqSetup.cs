@@ -19,12 +19,12 @@ namespace Cjora.MQ
         /// <param name="configuration">应用程序配置</param>
         public static void AddMq(this IServiceCollection services, IConfiguration configuration)
         {
-            var mqOptions = configuration.GetSection("MqOptions").Get<MqOptions>();
+            var section = configuration.GetSection("MqOptions");
+            var mqOptions = section.Get<MqOptions>();
             if (mqOptions == null)
                 throw new ArgumentNullException("MqOptions 配置不能为空");
+            services.Configure<MqOptions>(configuration.GetSection("MqOptions"));
 
-            // 注册到 DI 容器
-            services.AddSingleton(mqOptions);
 
             // 根据 MQ 类型注册具体实现
             switch (mqOptions.MqType)

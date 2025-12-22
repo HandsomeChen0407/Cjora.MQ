@@ -158,7 +158,7 @@ namespace Cjora.MQ.Services
             if (string.IsNullOrWhiteSpace(topic))
                 throw new ArgumentNullException(nameof(topic));
 
-            byte[] payload = IMq.SerializeToBytes(data);
+            byte[] payload = MqSerializer.ToBytes(data);
 
             try
             {

@@ -27,11 +27,11 @@ public abstract class MqHostedService : BackgroundService
     // CPU 核心数
     private readonly int _cpuCount;
 
-    protected MqHostedService(IMq mq, ILogger<MqHostedService> logger, MqOptions mqOptions)
+    protected MqHostedService(IMq mq, ILogger<MqHostedService> logger, IOptions<MqOptions> mqOptions)
     {
         _mq = mq;
         _logger = logger;
-        _mqOptions = mqOptions;
+        _mqOptions = mqOptions.Value;
 
         _cpuCount = Environment.ProcessorCount;
 

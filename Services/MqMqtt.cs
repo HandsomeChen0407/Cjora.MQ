@@ -3,7 +3,6 @@ using Cjora.MQ.Options;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
 using MQTTnet.Protocol;
-using Newtonsoft.Json;
 using System.Buffers;
 using System.Text;
 using System.Threading.Channels;
@@ -215,7 +214,7 @@ namespace Cjora.MQ.Services
         {
             try
             {
-                byte[] payload = IMq.SerializeToBytes(data);
+                byte[] payload = MqSerializer.ToBytes(data);
 
                 var msg = new MqttApplicationMessageBuilder()
                     .WithTopic(topic)
