@@ -79,7 +79,7 @@ using System.Threading.Tasks;
 
 public class MyMqHostedService : MqHostedService
 {
-    public MyMqHostedService(IMq mq, ILogger<MyMqHostedService> logger, MqOptions mqOptions)
+    public MyMqHostedService(IMq mq, ILogger<MyMqHostedService> logger, IOptions<MqOptions> mqOptions)
         : base(mq, logger, mqOptions)
     {
     }
@@ -112,26 +112,6 @@ public class MyService
     {
         await _mq.PublishAsync("topic1", new { Name = "Test", Value = 123 });
         await _mq.PublishAsync("topic2", "简单文本消息");
-    }
-}
-
-```
-
----
-
-## 依赖注入示例
-
-```csharp
-
-public class DemoService
-{
-    private readonly IMq _mq;
-    private readonly MqOptions _options;
-
-    public DemoService(IMq mq, MqOptions options)
-    {
-        _mq = mq;
-        _options = options;
     }
 }
 
