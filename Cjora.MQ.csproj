@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
-    <Authors>Cjora.MQ</Authors>
+    <Authors>HandsomeChen0407</Authors>
     <Company>Cjora.MQ</Company>
     <Copyright>Copyright © 2025 HandsomeChen0407</Copyright>
     <Description>高性能、可扩展的 .NET 消息队列封装库，支持 MQTT 和 Kafka，提供统一接口 IMq，可轻松集成到 ASP.NET Core 或任意 .NET 项目中。</Description>
