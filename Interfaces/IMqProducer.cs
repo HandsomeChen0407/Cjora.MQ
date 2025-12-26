@@ -18,7 +18,6 @@ public interface IMqProducer : IMqClient
     /// </summary>
     /// <param name="topic">目标主题（Topic），用于订阅者识别消息类型。</param>
     /// <param name="data">消息内容，可以是 string、byte[] 或其他对象。</param>
-    /// <param name="cancellationToken">可选的取消令牌，用于取消发布队列消息的操作。</param>
     /// <returns>异步任务，消息发布完成后返回。</returns>
-    Task PublishAsync(string topic, object data, CancellationToken cancellationToken = default);
+    Task PublishAsync(string topic, object data);
 }

@@ -1,20 +1,54 @@
-# Cjora.MQ
+# 📦 Cjora.MQ
 
-Cjora.MQ 是一个高性能、可扩展的 .NET 消息队列封装库，支持 **MQTT 和 Kafka**，提供统一接口 **IMq**，可轻松集成到 ASP.NET Core 或任意 .NET 项目中。
+Cjora.MQ 是一个高性能、可扩展的 .NET 消息队列基础设施库，  
+统一封装 Kafka / MQTT，提供标准化的 Consumer / Producer / Runtime 生命周期管理。
 
----
-
-## 功能
-
-- 支持 **MQTT / Kafka** 的统一操作接口  
-- 内置异步消息通道，支持批量消费  
-- 支持动态并发调整，队列积压自适应  
-- JSON 消息序列化保持原始大小写  
-- 与 **依赖注入** 无缝集成  
+适用于：
+- ASP.NET Core 后台服务
+- 微服务消息通信
+- MQTT ⇄ Kafka 消息桥接
+- 高并发消息消费场景
 
 ---
 
-## 安装
+## ✨ 特性
+
+- 支持 Kafka / MQTT
+- Consumer / Producer 职责完全拆分
+- 多 Profile、多实例并存
+- 内置 Channel 高性能缓冲
+- 批量消费 + 动态并发
+- 与 IHostedService 深度集成
+- 统一 Runtime 管理生命周期
+
+---
+
+## 架构说明
+
+```text
+
+┌────────────┐
+│ Host       │
+└─────┬──────┘
+      │
+┌─────▼──────────┐
+│ MqRuntime      │
+│ 生命周期管理   │
+└─────┬──────────┘
+      │
+ ┌────▼────┐   ┌────▼────┐
+ │Consumer │   │Producer │
+ └────┬────┘   └─────────┘
+      │
+ ┌────▼────────┐
+ │ Channel     │
+ └─────────────┘
+
+```
+
+---
+
+## 📦 安装
 
 ```bash
 dotnet add package Cjora.MQ
@@ -22,20 +56,29 @@ dotnet add package Cjora.MQ
 
 ---
 
-## 配置实例
+## 配置示例（多 Profile）
 
 ```json
 {
   "MqOptions": {
-    "MqType": "1",
-    "ServiceIP": "127.0.0.1",
-    "ServicePort": 1883,
-    "Username": "user",
-    "Password": "pass",
-    "SubTopic": "topic1,topic2",
-    "ChannelLength": 5000,
-    "Mqtt": {
-      "KeepAliveSeconds": 90
+    "Profiles": {
+      "kafka-consumer": {
+        "MqType": 2,
+        "Role": 1,
+        "ServiceIP": "127.0.0.1:9092",
+        "SubTopic": "order.created,order.updated",
+        "Kafka": {
+          "GroupId": "order-service"
+        }
+      },
+      "mqtt-producer": {
+        "MqType": 1,
+        "Role": 2,
+        "ServiceIP": "127.0.0.1",
+        "ServicePort": 1883,
+        "Username": "user",
+        "Password": "pass"
+      }
     }
   }
 }
@@ -43,51 +86,45 @@ dotnet add package Cjora.MQ
 
 ---
 
-## Program.cs 示例
+## Program.cs 注册
 
 ```csharp
 
-using Cjora.MQ;
-
 var builder = WebApplication.CreateBuilder(args);
 
-// 注册 MQ 服务
 builder.Services.AddMq(builder.Configuration);
-builder.Services.AddHostedService<MyMqHostedService>();
+
+// 注册你的业务消费 HostedService
+builder.Services.AddHostedService<OrderConsumerService>();
 
 var app = builder.Build();
-
-app.MapGet("/send", async (MyService service) =>
-{
-    await service.SendMessageAsync();
-    return Results.Ok("消息已发送");
-});
-
 app.Run();
 
 ```
 
 ---
 
-## 创建后台服务示例
+## 创建消费后台服务
 
 ```csharp
-
 using Cjora.MQ.Services;
-using System.Threading;
-using System.Threading.Tasks;
 
-public class MyMqHostedService : MqHostedService
+public class OrderConsumerService : MqHostedService
 {
-    public MyMqHostedService(IMq mq, ILogger<MyMqHostedService> logger, IOptions<MqOptions> mqOptions)
-        : base(mq, logger, mqOptions)
+    public OrderConsumerService(
+        MqRuntime runtime,
+        ILogger<OrderConsumerService> logger)
+        : base(runtime, "kafka-consumer", logger)
     {
     }
 
-    protected override async Task ProcessMessage(string topic, string msg, CancellationToken stoppingToken)
+    protected override Task ProcessMessage(
+        string topic,
+        string msg,
+        CancellationToken stoppingToken)
     {
-        Console.WriteLine($"收到主题 {topic} 消息: {msg}");
-        await Task.CompletedTask;
+        Console.WriteLine($"[{topic}] {msg}");
+        return Task.CompletedTask;
     }
 }
 
@@ -99,19 +136,26 @@ public class MyMqHostedService : MqHostedService
 
 ```csharp
 
-public class MyService
-{
-    private readonly IMq _mq;
+using Cjora.MQ.Interfaces;
 
-    public MyService(IMq mq)
+public class MessagePublisher
+{
+    private readonly IMqProducer _producer;
+
+    public MessagePublisher(MqRuntime runtime)
     {
-        _mq = mq;
+        _producer = runtime.GetProducer("mqtt-producer");
     }
 
-    public async Task SendMessageAsync()
+    public Task SendAsync()
     {
-        await _mq.PublishAsync("topic1", new { Name = "Test", Value = 123 });
-        await _mq.PublishAsync("topic2", "简单文本消息");
+        return _producer.PublishAsync(
+            "device/status",
+            new
+            {
+                DeviceId = "D001",
+                Online = true
+            });
     }
 }
 

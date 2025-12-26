@@ -13,6 +13,11 @@ public sealed class MqProfileOptions
     public MqTypeEnum MqType { get; set; } = MqTypeEnum.Unknown;
 
     /// <summary>
+    /// 当前 Profile 的角色
+    /// </summary>
+    public MqRoleEnum Role { get; set; } = MqRoleEnum.Unknown;
+
+    /// <summary>
     /// 内存通道长度（所有 MQ 共用默认值）
     /// </summary>
     public int ChannelLength { get; set; } = 5000;

@@ -34,20 +34,28 @@ public static class MqSetup
 
             switch (profileOptions.MqType)
             {
-                case MqTypeEnum.Kafka:
+                case MqTypeEnum.Kafka when profileOptions.Role == MqRoleEnum.Consumer:
                     services.AddSingleton<IMqClient>(sp =>
-                        new MqKafka(
-                            name,
-                            profileOptions,
-                            sp.GetRequiredService<ILogger<MqKafka>>()));
+                        new KafkaConsumerClient(name, profileOptions,
+                            sp.GetRequiredService<ILogger<KafkaConsumerClient>>()));
                     break;
 
-                case MqTypeEnum.Mqtt:
+                case MqTypeEnum.Kafka when profileOptions.Role == MqRoleEnum.Producer:
                     services.AddSingleton<IMqClient>(sp =>
-                        new MqMqtt(
-                            name,
-                            profileOptions,
-                            sp.GetRequiredService<ILogger<MqMqtt>>()));
+                        new KafkaProducerClient(name, profileOptions,
+                            sp.GetRequiredService<ILogger<KafkaProducerClient>>()));
+                    break;
+
+                case MqTypeEnum.Mqtt when profileOptions.Role == MqRoleEnum.Consumer:
+                    services.AddSingleton<IMqClient>(sp =>
+                        new MqttConsumerClient(name, profileOptions,
+                            sp.GetRequiredService<ILogger<MqttConsumerClient>>()));
+                    break;
+
+                case MqTypeEnum.Mqtt when profileOptions.Role == MqRoleEnum.Producer:
+                    services.AddSingleton<IMqClient>(sp =>
+                        new MqttProducerClient(name, profileOptions,
+                            sp.GetRequiredService<ILogger<MqttProducerClient>>()));
                     break;
 
                 default:
