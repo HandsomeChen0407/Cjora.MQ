@@ -1,8 +1,6 @@
 ﻿using Cjora.MQ.Interfaces;
-using Cjora.MQ.Options;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using System.Text;
 
 namespace Cjora.MQ.Services;
@@ -13,9 +11,8 @@ namespace Cjora.MQ.Services;
 /// </summary>
 public abstract class MqHostedService : BackgroundService
 {
-    private readonly IMq _mq;
+    private readonly IMqConsumer _consumer;
     private readonly ILogger<MqHostedService> _logger;
-    private readonly MqOptions _mqOptions;
 
     // 队列空时休眠毫秒
     private const int _minIntervalMs = 10;
@@ -27,23 +24,15 @@ public abstract class MqHostedService : BackgroundService
     // CPU 核心数
     private readonly int _cpuCount;
 
-    protected MqHostedService(IMq mq, ILogger<MqHostedService> logger, IOptions<MqOptions> mqOptions)
+    protected MqHostedService(MqRuntime runtime, string consumerName, ILogger<MqHostedService> logger)
     {
-        _mq = mq;
+        _consumer = runtime.GetConsumer(consumerName);
         _logger = logger;
-        _mqOptions = mqOptions.Value;
 
         _cpuCount = Environment.ProcessorCount;
-
         InitPerformanceSettings();
     }
 
-    public override async Task StartAsync(CancellationToken cancellationToken)
-    {
-        // 原生方式：直接连接 MQ
-        await _mq.ConnectAsync(_mqOptions);
-        await base.StartAsync(cancellationToken);
-    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -57,7 +46,7 @@ public abstract class MqHostedService : BackgroundService
                 // 批量取消息
                 while (count < _batchCount && !stoppingToken.IsCancellationRequested)
                 {
-                    var msg = await _mq.TryDequeueAsync(stoppingToken);
+                    var msg = await _consumer.TryDequeueAsync(stoppingToken);
                     if (msg == null) break;
                     messages.Add(msg.Value);
                     count++;
@@ -127,11 +116,12 @@ public abstract class MqHostedService : BackgroundService
         int q = QueuesCount();
 
         if (q > 20000)
-            IncreaseConcurrency(50);
+            IncreaseConcurrency(32);
         else if (q > 5000)
-            IncreaseConcurrency(20);
-        else if (q < 500)
-            DecreaseConcurrency(10);
+            IncreaseConcurrency(16);
+
+        // ⚠ 不再支持动态降低并发
+        // 降并发会导致 SemaphoreSlim 状态不可控
     }
     private void IncreaseConcurrency(int step)
     {
@@ -144,19 +134,7 @@ public abstract class MqHostedService : BackgroundService
             _logger.LogInformation($"动态提升并发：{cur} → {max}");
         }
     }
-    private void DecreaseConcurrency(int step)
-    {
-        int cur = _semaphore.CurrentCount;
-        int newVal = Math.Clamp(cur - step, 4, 128);
-
-        if (newVal < cur)
-        {
-            _semaphore = new SemaphoreSlim(newVal);
-            _logger.LogInformation($"动态降低并发：{cur} → {newVal}");
-        }
-    }
-    public int QueuesCount() => _mq.QueuesCount();
-    public Task PublishAsync(string topic, object msg) => _mq.PublishAsync(topic, msg);
+    public int QueuesCount() => _consumer.QueuesCount();
     public void LogDebug(string msg) => _logger.LogDebug($"MQ 消息队列：{msg}");
     public void LogInformation(string msg) => _logger.LogInformation($"MQ 消息队列：{msg}");
     public void LogWarning(string msg) => _logger.LogWarning($"MQ 消息队列预警：{msg}");

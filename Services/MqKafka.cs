@@ -2,8 +2,7 @@
 using Cjora.MQ.Options;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using System.Text;
+using Microsoft.Extensions.Options;
 using System.Threading.Channels;
 
 namespace Cjora.MQ.Services
@@ -13,8 +12,10 @@ namespace Cjora.MQ.Services
     /// 使用内存 Channel 作为缓冲区，实现异步消费和发布功能。
     /// 支持 string、byte[] 或任意对象（通过 Newtonsoft.Json 序列化）发布消息。
     /// </summary>
-    public sealed class MqKafka : IMq
+    public sealed class MqKafka : IMqConsumer, IMqProducer
     {
+        public string Name { get; }
+
         /// <summary>
         /// 内存消息通道，用于缓存 Kafka 消费到的消息
         /// </summary>
@@ -48,7 +49,7 @@ namespace Cjora.MQ.Services
         /// <summary>
         /// MQ 配置
         /// </summary>
-        private MqOptions _mqOptions;
+        private readonly MqProfileOptions _profile;
 
         /// <summary>
         /// 日志记录器
@@ -59,57 +60,58 @@ namespace Cjora.MQ.Services
         /// 构造函数，注入日志
         /// </summary>
         /// <param name="logger">ILogger 实例</param>
-        public MqKafka(ILogger<MqKafka> logger)
+        public MqKafka(string name, MqProfileOptions profile, ILogger<MqKafka> logger)
         {
+            Name = name;
+            _profile = profile;
             _logger = logger;
         }
 
-        #region IMq 接口实现
-
         /// <summary>
-        /// 连接 Kafka 服务，并启动后台消费循环
+        /// 统一启动入口（由 MQ Runtime 调用）
         /// </summary>
-        /// <param name="mqOptions">MQ 配置信息，包括服务地址、订阅主题、分组 ID 等</param>
-        /// <returns>已完成的任务</returns>
-        public Task ConnectAsync(MqOptions mqOptions)
+        public async Task StartAsync(CancellationToken ct)
         {
-            _mqOptions = mqOptions ?? throw new ArgumentNullException(nameof(mqOptions));
-
             // --- 初始化内存 Channel ---
             _channel = Channel.CreateBounded<(string, byte[])>(
-                new BoundedChannelOptions(_mqOptions.ChannelLength)
+                new BoundedChannelOptions(_profile.ChannelLength)
                 {
                     SingleReader = true,    // HostedService 单线程消费
                     SingleWriter = false,   // Kafka Poll 单线程，但预留扩展
                     FullMode = BoundedChannelFullMode.Wait // 队列满时等待，不丢消息
                 });
 
+            await ConnectInternalAsync(ct);
+        }
+
+        private Task ConnectInternalAsync(CancellationToken ct)
+        {
             // --- 初始化 Kafka 消费者 ---
             var consumerConfig = new ConsumerConfig
             {
-                BootstrapServers = _mqOptions.ServiceIP,
-                GroupId = _mqOptions.Kafka.GroupId,
+                BootstrapServers = _profile.ServiceIP,
+                GroupId = _profile.Kafka.GroupId,
                 EnableAutoCommit = false,                     // 手动提交 Offset
-                AutoOffsetReset = _mqOptions.Kafka.AutoOffsetReset,
-                SessionTimeoutMs = _mqOptions.Kafka.SessionTimeoutMs,
-                MaxPollIntervalMs = _mqOptions.Kafka.MaxPollIntervalMs
+                AutoOffsetReset = _profile.Kafka.AutoOffsetReset,
+                SessionTimeoutMs = _profile.Kafka.SessionTimeoutMs,
+                MaxPollIntervalMs = _profile.Kafka.MaxPollIntervalMs
             };
 
             _consumer = new ConsumerBuilder<string, byte[]>(consumerConfig)
                 .SetErrorHandler((_, e) => _logger.LogError($"[Kafka][Consumer] {e.Reason}"))
                 .Build();
 
-            var topics = _mqOptions.SubTopic
+            var topics = _profile.SubTopic
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             _consumer.Subscribe(topics);
 
             // --- 初始化 Kafka 生产者 ---
             var producerConfig = new ProducerConfig
             {
-                BootstrapServers = _mqOptions.ServiceIP,
-                EnableIdempotence = _mqOptions.Kafka.EnableIdempotence, // 保证幂等
-                LingerMs = _mqOptions.Kafka.LingerMs,
-                BatchNumMessages = _mqOptions.Kafka.BatchNumMessages,
+                BootstrapServers = _profile.ServiceIP,
+                EnableIdempotence = _profile.Kafka.EnableIdempotence, // 保证幂等
+                LingerMs = _profile.Kafka.LingerMs,
+                BatchNumMessages = _profile.Kafka.BatchNumMessages,
                 Acks = Acks.All
             };
 
@@ -118,13 +120,36 @@ namespace Cjora.MQ.Services
                 .Build();
 
             // --- 启动后台消费循环 ---
-            _cts = new CancellationTokenSource();
+            _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             _consumeLoop = Task.Run(ConsumeLoop, _cts.Token);
 
-            _logger.LogInformation($"[Kafka] 已连接 | Group={_mqOptions.Kafka.GroupId} | Topics={_mqOptions.SubTopic}");
+            _logger.LogInformation($"[Kafka] 已连接 | Group={_profile.Kafka.GroupId} | Topics={_profile.SubTopic}");
 
             return Task.CompletedTask;
         }
+
+        public async ValueTask DisposeAsync()
+        {
+            try
+            {
+                _cts?.Cancel();
+
+                if (_consumeLoop != null)
+                    await Task.WhenAny(_consumeLoop, Task.Delay(5000));
+            }
+            catch
+            {
+                // ignore
+            }
+            finally
+            {
+                _consumer?.Close();   // 通知 Kafka 正常离组
+                _consumer?.Dispose();
+                _producer?.Dispose();
+            }
+        }
+
+        #region IMqConsumer 接口实现
 
         /// <summary>
         /// 尝试从内存队列中异步取出一条消息（非阻塞）
@@ -146,39 +171,6 @@ namespace Cjora.MQ.Services
         /// </summary>
         /// <returns>队列长度</returns>
         public int QueuesCount() => Volatile.Read(ref _queueCount);
-
-        /// <summary>
-        /// 异步发布消息到指定 Kafka Topic
-        /// 支持 string、byte[] 或任意对象（JSON 序列化）
-        /// </summary>
-        /// <param name="topic">目标 Topic</param>
-        /// <param name="data">消息内容</param>
-        public async Task PublishAsync(string topic, object data)
-        {
-            if (string.IsNullOrWhiteSpace(topic))
-                throw new ArgumentNullException(nameof(topic));
-
-            byte[] payload = MqSerializer.ToBytes(data);
-
-            try
-            {
-                var result = await _producer.ProduceAsync(topic, new Message<string, byte[]>
-                {
-                    Key = null,
-                    Value = payload
-                });
-
-                _logger.LogInformation($"[Kafka][Publish] Topic={topic}, Offset={result.Offset}");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"[Kafka][Publish] Topic={topic} 消息发送失败");
-            }
-        }
-
-        #endregion
-
-        #region 消费循环
 
         /// <summary>
         /// Kafka 消费后台循环，将消息写入内存 Channel
@@ -205,7 +197,8 @@ namespace Cjora.MQ.Services
 
                         Interlocked.Increment(ref _queueCount);
 
-                        // 提交 Offset，保证至少一次语义
+                        // 提交 Offset（At-Most-Once 语义）
+                        // 消息写入内存队列后即提交，业务处理失败不会重试
                         _consumer.Commit(record);
                     }
                     catch (ConsumeException ce)
@@ -221,6 +214,40 @@ namespace Cjora.MQ.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[Kafka][ConsumeLoop] 循环异常");
+            }
+        }
+
+        #endregion
+
+        #region IMqPublisher 接口实现
+
+        /// <summary>
+        /// 异步发布消息到指定 Kafka Topic
+        /// 支持 string、byte[] 或任意对象（JSON 序列化）
+        /// </summary>
+        /// <param name="topic">目标 Topic</param>
+        /// <param name="data">消息内容</param>
+        /// <param token="data">取消令牌</param>
+        public async Task PublishAsync(string topic, object data, CancellationToken token = default)
+        {
+            if (string.IsNullOrWhiteSpace(topic))
+                throw new ArgumentNullException(nameof(topic));
+
+            byte[] payload = MqSerializer.ToBytes(data);
+
+            try
+            {
+                var result = await _producer.ProduceAsync(topic, new Message<string, byte[]>
+                {
+                    Key = null,
+                    Value = payload
+                });
+
+                _logger.LogInformation($"[Kafka][Publish] Topic={topic}, Offset={result.Offset}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"[Kafka][Publish] Topic={topic} 消息发送失败");
             }
         }
 

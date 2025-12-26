@@ -1,5 +1,6 @@
 ﻿using Cjora.MQ.Interfaces;
 using Cjora.MQ.Options;
+using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
 using MQTTnet.Protocol;
@@ -14,8 +15,10 @@ namespace Cjora.MQ.Services
     /// 使用内存 Channel 缓存消息，实现异步消费和发布。
     /// 支持 string、byte[] 或任意对象（JSON 序列化）发布消息。
     /// </summary>
-    public class MqMqtt : IMq
+    public class MqMqtt : IMqConsumer, IMqProducer
     {
+        public string Name { get; }
+
         /// <summary>
         /// 内存消息通道，用于缓存 MQTT 消费到的消息
         /// </summary>
@@ -44,7 +47,7 @@ namespace Cjora.MQ.Services
         /// <summary>
         /// MQ 配置选项
         /// </summary>
-        private MqOptions _mqOptions;
+        private readonly MqProfileOptions _profile;
 
         /// <summary>
         /// 日志记录器
@@ -55,38 +58,39 @@ namespace Cjora.MQ.Services
         /// 构造函数，注入日志
         /// </summary>
         /// <param name="logger">ILogger 实例</param>
-        public MqMqtt(ILogger<MqMqtt> logger)
+        public MqMqtt(string name, MqProfileOptions profile, ILogger<MqMqtt> logger)
         {
+            Name = name;
+            _profile = profile;
             _logger = logger;
         }
 
-        #region IMq 接口实现
-
         /// <summary>
-        /// 连接 MQTT 服务并初始化通道和事件
+        /// 统一启动入口（由 MQ Runtime 调用）
         /// </summary>
-        /// <param name="mqOptions">MQ 配置，包括服务地址、端口、用户名、密码和订阅主题等</param>
-        public async Task ConnectAsync(MqOptions mqOptions)
+        public async Task StartAsync(CancellationToken ct)
         {
-            _mqOptions = mqOptions;
-
-            _mqttFactory = new MqttClientFactory();
-            _mqttClient = _mqttFactory.CreateMqttClient();
-
             // 初始化内存通道
             _channel = Channel.CreateBounded<(string Topic, byte[] Payload)>(
-                new BoundedChannelOptions(mqOptions.ChannelLength)
+                new BoundedChannelOptions(_profile.ChannelLength)
                 {
                     SingleReader = true,    // HostedService 单线程消费
                     SingleWriter = false,   // MQTT 多线程回调
                     FullMode = BoundedChannelFullMode.Wait // 队列满时等待，不丢消息
                 });
 
+            await ConnectInternalAsync(ct);
+        }
+
+        private async Task ConnectInternalAsync(CancellationToken ct)
+        {
+            _mqttFactory = new MqttClientFactory();
+            _mqttClient = _mqttFactory.CreateMqttClient();
             // 初始化 MQTT 连接选项
             _mqttClientOptions = new MqttClientOptionsBuilder()
-                .WithTcpServer(_mqOptions.ServiceIP, _mqOptions.ServicePort)
-                .WithCredentials(_mqOptions.Username, _mqOptions.Password)
-                .WithKeepAlivePeriod(TimeSpan.FromSeconds(_mqOptions.Mqtt.KeepAliveSeconds))
+                .WithTcpServer(_profile.ServiceIP, _profile.ServicePort)
+                .WithCredentials(_profile.Username, _profile.Password)
+                .WithKeepAlivePeriod(TimeSpan.FromSeconds(_profile.Mqtt.KeepAliveSeconds))
                 .Build();
 
             // 注册 MQTT 事件
@@ -98,7 +102,26 @@ namespace Cjora.MQ.Services
             await _mqttClient.ConnectAsync(_mqttClientOptions);
         }
 
-        #endregion
+        public async ValueTask DisposeAsync()
+        {
+            try
+            {
+                if (_mqttClient != null)
+                {
+                    if (_mqttClient.IsConnected)
+                    {
+                        _logger.LogInformation("[MQTT] 正在断开连接...");
+                        await _mqttClient.DisconnectAsync();
+                    }
+
+                    _mqttClient.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[MQTT] Dispose 释放异常");
+            }
+        }
 
         #region MQTT 事件
 
@@ -111,13 +134,13 @@ namespace Cjora.MQ.Services
             {
                 var subscribeOptions = new MqttClientSubscribeOptionsBuilder();
 
-                foreach (var topic in _mqOptions.SubTopic.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                foreach (var topic in _profile.SubTopic.Split(',', StringSplitOptions.RemoveEmptyEntries))
                 {
                     subscribeOptions.WithTopicFilter(f => f.WithTopic(topic.Trim()));
                 }
 
                 await _mqttClient.SubscribeAsync(subscribeOptions.Build());
-                _logger.LogInformation($"已订阅主题: {_mqOptions.SubTopic}");
+                _logger.LogInformation($"已订阅主题: {_profile.SubTopic}");
             }
             catch (Exception ex)
             {
@@ -210,7 +233,8 @@ namespace Cjora.MQ.Services
         /// </summary>
         /// <param name="topic">消息主题</param>
         /// <param name="data">消息内容</param>
-        public async Task PublishAsync(string topic, object data)
+        /// <param name="token">可选取消令牌</param>
+        public async Task PublishAsync(string topic, object data, CancellationToken token = default)
         {
             try
             {
