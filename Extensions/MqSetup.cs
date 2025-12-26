@@ -4,6 +4,7 @@ using Cjora.MQ.Options;
 using Cjora.MQ.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Cjora.MQ;
@@ -64,7 +65,12 @@ public static class MqSetup
             }
         }
 
-        // 注册 MQ Runtime（必须是 HostedService）
-        services.AddHostedService<MqRuntime>();
+        // 注册 Runtime 本体（给业务用）
+        services.AddSingleton<MqRuntime>();
+
+        // 再把同一个实例注册为 HostedService（给 Host 用）
+        services.AddSingleton<IHostedService>(sp =>
+            sp.GetRequiredService<MqRuntime>());
+
     }
 }

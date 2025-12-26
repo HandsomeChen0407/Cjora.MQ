@@ -11,7 +11,9 @@ namespace Cjora.MQ.Services;
 /// </summary>
 public abstract class MqHostedService : BackgroundService
 {
-    private readonly IMqConsumer _consumer;
+    private IMqConsumer _consumer = null!;
+    private readonly MqRuntime _runtime;
+    private readonly string _consumerName;
     private readonly ILogger<MqHostedService> _logger;
 
     // 队列空时休眠毫秒
@@ -26,7 +28,8 @@ public abstract class MqHostedService : BackgroundService
 
     protected MqHostedService(MqRuntime runtime, string consumerName, ILogger<MqHostedService> logger)
     {
-        _consumer = runtime.GetConsumer(consumerName);
+        _runtime = runtime;
+        _consumerName = consumerName;
         _logger = logger;
 
         _cpuCount = Environment.ProcessorCount;
@@ -36,6 +39,12 @@ public abstract class MqHostedService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        _consumer = _runtime.GetConsumer(_consumerName);
+
+        _logger.LogInformation(
+            "MQ Consumer 已绑定：{ConsumerName}",
+            _consumerName);
+
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -105,11 +114,25 @@ public abstract class MqHostedService : BackgroundService
 
     private void InitPerformanceSettings()
     {
-        _batchCount = Math.Clamp(_cpuCount * 400, 500, 5000);
+        // === 并发控制 ===
+        // 初始并发：CPU * 1（保守起步）
+        // 最大并发：CPU * 4（只用于动态扩容上限）
+        int initialConcurrency = Math.Clamp(_cpuCount, 2, 8);
         int maxConcurrency = Math.Clamp(_cpuCount * 4, 8, 64);
-        _semaphore = new SemaphoreSlim(maxConcurrency);
 
-        _logger.LogInformation($"MQ 服务初始化性能：CPU={_cpuCount}, 批次={_batchCount}, 最大并发={maxConcurrency}");
+        _semaphore = new SemaphoreSlim(initialConcurrency, maxConcurrency);
+
+        // === 批量控制 ===
+        // 初始批量：CPU * 100
+        // 最大批量：5000
+        _batchCount = Math.Clamp(_cpuCount * 100, 200, 2000);
+
+        _logger.LogInformation(
+            "MQ 性能初始化：CPU={Cpu}, 初始并发={InitConcurrency}, 最大并发={MaxConcurrency}, 批次={Batch}",
+            _cpuCount,
+            initialConcurrency,
+            maxConcurrency,
+            _batchCount);
     }
     private void AdjustPerformanceByQueueLoad()
     {
