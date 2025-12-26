@@ -10,19 +10,20 @@
     <Authors>HandsomeChen0407</Authors>
     <Company>Cjora.MQ</Company>
     <Copyright>Copyright © 2025 HandsomeChen0407</Copyright>
-    <Description>高性能、可扩展的 .NET 消息队列封装库，支持 MQTT 和 Kafka，提供统一接口 IMq，可轻松集成到 ASP.NET Core 或任意 .NET 项目中。</Description>
+    <Description>Cjora.MQ 是一个高性能、可扩展的 .NET 消息队列基础设施库，统一封装 Kafka / MQTT，提供标准化的 Consumer / Producer / Runtime 生命周期管理。</Description>
     <Name />
     <PackageIconUrl />
     <PackageId>Cjora.MQ</PackageId>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseUrl />
     <PackageProjectUrl>https://github.com/HandsomeChen0407/Cjora.MQ</PackageProjectUrl>
-    <PackageReleaseNotes>兼容net 8版本</PackageReleaseNotes>
+    <PackageReleaseNotes>1、拆分消费者和发布者
+2、可支持不同消息队列共存</PackageReleaseNotes>
     <PackageTags />
     <Product>Cjora.MQ</Product>
     <RepositoryType />
     <RepositoryUrl />
-    <Version>1.1.0</Version>
+    <Version>2.0.0</Version>
     <PackageIcon />
   </PropertyGroup>
 
