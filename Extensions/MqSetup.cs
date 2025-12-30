@@ -32,13 +32,8 @@ public static class MqSetup
         {
             var name = profile.Key;
             var profileOptions = profile.Value;
-
-            // 字符串 -> 枚举转换
-            if (!Enum.TryParse<MqTypeEnum>(profileOptions.MqType, true, out var mqType))
-                mqType = MqTypeEnum.Unknown;
-
-            if (!Enum.TryParse<MqRoleEnum>(profileOptions.Role, true, out var role))
-                role = MqRoleEnum.Unknown;
+            var mqType = profileOptions.MqType;
+            var role = profileOptions.Role;
 
             switch (mqType)
             {
