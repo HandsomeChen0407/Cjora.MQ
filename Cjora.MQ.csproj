@@ -17,13 +17,12 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseUrl />
     <PackageProjectUrl>https://github.com/HandsomeChen0407/Cjora.MQ</PackageProjectUrl>
-    <PackageReleaseNotes>1、拆分消费者和发布者
-2、可支持不同消息队列共存</PackageReleaseNotes>
+    <PackageReleaseNotes>修改配置文件加载方式</PackageReleaseNotes>
     <PackageTags />
     <Product>Cjora.MQ</Product>
     <RepositoryType />
     <RepositoryUrl />
-    <Version>2.0.0</Version>
+    <Version>2.1.0</Version>
     <PackageIcon />
   </PropertyGroup>
 

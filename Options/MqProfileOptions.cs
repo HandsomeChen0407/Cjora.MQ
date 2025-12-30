@@ -10,12 +10,12 @@ public sealed class MqProfileOptions
     /// <summary>
     /// 消息队列类型
     /// </summary>
-    public MqTypeEnum MqType { get; set; } = MqTypeEnum.Unknown;
+    public string MqType { get; set; } = MqTypeEnum.Unknown.ToString();
 
     /// <summary>
     /// 当前 Profile 的角色
     /// </summary>
-    public MqRoleEnum Role { get; set; } = MqRoleEnum.Unknown;
+    public string Role { get; set; } = MqRoleEnum.Unknown.ToString();
 
     /// <summary>
     /// 内存通道长度（所有 MQ 共用默认值）

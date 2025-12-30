@@ -63,8 +63,8 @@ dotnet add package Cjora.MQ
   "MqOptions": {
     "Profiles": {
       "kafka-consumer": {
-        "MqType": 2,
-        "Role": 1,
+        "MqType": "Kafka",
+        "Role": "Consumer",
         "ServiceIP": "127.0.0.1:9092",
         "SubTopic": "order.created,order.updated",
         "Kafka": {
@@ -72,8 +72,8 @@ dotnet add package Cjora.MQ
         }
       },
       "mqtt-producer": {
-        "MqType": 1,
-        "Role": 2,
+        "MqType": "Mqtt",
+        "Role": "Producer",
         "ServiceIP": "127.0.0.1",
         "ServicePort": 1883,
         "Username": "user",

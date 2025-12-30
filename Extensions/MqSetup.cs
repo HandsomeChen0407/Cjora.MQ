@@ -33,27 +33,34 @@ public static class MqSetup
             var name = profile.Key;
             var profileOptions = profile.Value;
 
-            switch (profileOptions.MqType)
+            // 字符串 -> 枚举转换
+            if (!Enum.TryParse<MqTypeEnum>(profileOptions.MqType, true, out var mqType))
+                mqType = MqTypeEnum.Unknown;
+
+            if (!Enum.TryParse<MqRoleEnum>(profileOptions.Role, true, out var role))
+                role = MqRoleEnum.Unknown;
+
+            switch (mqType)
             {
-                case MqTypeEnum.Kafka when profileOptions.Role == MqRoleEnum.Consumer:
+                case MqTypeEnum.Kafka when role == MqRoleEnum.Consumer:
                     services.AddSingleton<IMqClient>(sp =>
                         new KafkaConsumerClient(name, profileOptions,
                             sp.GetRequiredService<ILogger<KafkaConsumerClient>>()));
                     break;
 
-                case MqTypeEnum.Kafka when profileOptions.Role == MqRoleEnum.Producer:
+                case MqTypeEnum.Kafka when role == MqRoleEnum.Producer:
                     services.AddSingleton<IMqClient>(sp =>
                         new KafkaProducerClient(name, profileOptions,
                             sp.GetRequiredService<ILogger<KafkaProducerClient>>()));
                     break;
 
-                case MqTypeEnum.Mqtt when profileOptions.Role == MqRoleEnum.Consumer:
+                case MqTypeEnum.Mqtt when role == MqRoleEnum.Consumer:
                     services.AddSingleton<IMqClient>(sp =>
                         new MqttConsumerClient(name, profileOptions,
                             sp.GetRequiredService<ILogger<MqttConsumerClient>>()));
                     break;
 
-                case MqTypeEnum.Mqtt when profileOptions.Role == MqRoleEnum.Producer:
+                case MqTypeEnum.Mqtt when role == MqRoleEnum.Producer:
                     services.AddSingleton<IMqClient>(sp =>
                         new MqttProducerClient(name, profileOptions,
                             sp.GetRequiredService<ILogger<MqttProducerClient>>()));
@@ -61,7 +68,7 @@ public static class MqSetup
 
                 default:
                     throw new NotSupportedException(
-                        $"MQ Profile [{name}] 使用了不支持的类型：{profileOptions.MqType}");
+                        $"MQ Profile [{name}] 使用了不支持的类型：{profileOptions.MqType}，角色：{profileOptions.Role}");
             }
         }
 
