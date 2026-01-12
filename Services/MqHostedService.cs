@@ -82,7 +82,6 @@ public abstract class MqHostedService : BackgroundService
                     try
                     {
                         var msgString = Encoding.UTF8.GetString(message.Payload);
-                        LogInformation($"消费内容：{msgString}");
                         await ProcessMessage(message.Topic, msgString, stoppingToken);
                     }
                     catch (Exception ex)

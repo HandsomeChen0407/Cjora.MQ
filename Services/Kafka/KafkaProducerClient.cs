@@ -68,7 +68,7 @@ namespace Cjora.MQ.Services
                 .SetErrorHandler((_, e) => _logger.LogError($"[Kafka][Producer] {e.Reason}"))
                 .Build();
 
-            _logger.LogInformation($"[Kafka] 已连接 | Group={_profile.Kafka.GroupId} | Topics={_profile.SubTopic}");
+            _logger.LogInformation($"[Kafka][Producer] 已连接 | BootstrapServers={_profile.ServiceIP}");
 
             return Task.CompletedTask;
         }
@@ -87,7 +87,6 @@ namespace Cjora.MQ.Services
         /// </summary>
         /// <param name="topic">目标 Topic</param>
         /// <param name="data">消息内容</param>
-        /// <param token="data">取消令牌</param>
         public async Task PublishAsync(string topic, object data)
         {
             if (string.IsNullOrWhiteSpace(topic))

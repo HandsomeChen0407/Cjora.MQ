@@ -67,6 +67,9 @@ public sealed class MqRuntime : IHostedService, IAsyncDisposable
 
     private T Get<T>(string name) where T : class, IMqClient
     {
+        if (_clientMap == null)
+            throw new InvalidOperationException("MQ Runtime 尚未启动，无法获取 Client");
+
         if (!_clientMap.TryGetValue(name, out var client))
             throw new KeyNotFoundException($"MQ Client 未找到：{name}");
 
