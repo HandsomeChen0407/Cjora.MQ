@@ -75,26 +75,14 @@ public abstract class MqHostedService : BackgroundService
                 if (qCount > 10)
                     LogWarning($"开始消费 {messages.Count} 条消息，队列积压 {qCount} 条");
 
-                // 并发处理消息
-                var tasks = messages.Select(async message =>
+                // 并发处理消息（不等待整批完成，避免单条阻塞拖慢整体）
+                foreach (var message in messages)
                 {
-                    await _semaphore.WaitAsync(stoppingToken);
-                    try
-                    {
-                        var msgString = Encoding.UTF8.GetString(message.Payload);
-                        await ProcessMessage(message.Topic, msgString, stoppingToken);
-                    }
-                    catch (Exception ex)
-                    {
-                        LogError(ex);
-                    }
-                    finally
-                    {
-                        _semaphore.Release();
-                    }
-                });
+                    // 直接调度异步方法，由 SemaphoreSlim 控制最大并发
+                    _ = ProcessMessageInternalAsync(message, stoppingToken);
+                }
 
-                await Task.WhenAll(tasks);
+                // 轻微让出时间片，避免空转影响其它业务
                 await Task.Delay(1, stoppingToken);
             }
             catch (Exception ex)
@@ -117,7 +105,7 @@ public abstract class MqHostedService : BackgroundService
         // 初始并发：CPU * 1（保守起步）
         // 最大并发：CPU * 4（只用于动态扩容上限）
         int initialConcurrency = Math.Clamp(_cpuCount, 2, 8);
-        int maxConcurrency = Math.Clamp(_cpuCount * 4, 8, 64);
+        int maxConcurrency = Math.Clamp(_cpuCount * 4, 8, 128);
 
         _semaphore = new SemaphoreSlim(initialConcurrency, maxConcurrency);
 
@@ -132,6 +120,26 @@ public abstract class MqHostedService : BackgroundService
             initialConcurrency,
             maxConcurrency,
             _batchCount);
+    }
+    /// <summary>
+    /// 带并发控制的消息处理封装，避免重复样板代码 & 不再额外使用 Task.Run
+    /// </summary>
+    private async Task ProcessMessageInternalAsync((string Topic, byte[] Payload) message, CancellationToken stoppingToken)
+    {
+        await _semaphore.WaitAsync(stoppingToken);
+        try
+        {
+            var msgString = Encoding.UTF8.GetString(message.Payload);
+            await ProcessMessage(message.Topic, msgString, stoppingToken);
+        }
+        catch (Exception ex)
+        {
+            LogError(ex);
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
     }
     private void AdjustPerformanceByQueueLoad()
     {

@@ -17,14 +17,12 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseUrl />
     <PackageProjectUrl>https://github.com/HandsomeChen0407/Cjora.MQ</PackageProjectUrl>
-    <PackageReleaseNotes>1、kafka生产者连接日志打印错误修复
-2、MQ 运行时容器增加校验
-3、MQ 后台服务基类去除while循环中的日志打印（后续在业务代码中打印）</PackageReleaseNotes>
+    <PackageReleaseNotes>修复单体消息消费过慢影响下批次消息消费的问题</PackageReleaseNotes>
     <PackageTags />
     <Product>Cjora.MQ</Product>
     <RepositoryType />
     <RepositoryUrl />
-    <Version>2.2.0</Version>
+    <Version>2.3.0</Version>
     <PackageIcon />
   </PropertyGroup>
 
