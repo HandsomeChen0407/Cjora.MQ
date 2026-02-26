@@ -77,12 +77,46 @@ dotnet add package Cjora.MQ
         "ServiceIP": "127.0.0.1",
         "ServicePort": 1883,
         "Username": "user",
-        "Password": "pass"
+        "Password": "pass",
+        "Mqtt": {
+          "KeepAliveSeconds": 90,
+          "ProtocolVersion": "V500",
+          "TraceIdPropertyName": "$__messageId"
+        }
+      },
+      "mqtt-consumer": {
+        "MqType": "Mqtt",
+        "Role": "Consumer",
+        "ServiceIP": "127.0.0.1",
+        "ServicePort": 1883,
+        "Username": "user",
+        "Password": "pass",
+        "SubTopic": "device/status",
+        "Mqtt": {
+          "KeepAliveSeconds": 90,
+          "ProtocolVersion": "V500"
+        }
       }
     }
   }
 }
 ```
+
+---
+
+## 配置说明
+
+### MQTT 配置项
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|--------|------|--------|------|
+| `KeepAliveSeconds` | `int` | `90` | MQTT KeepAlive 时间（秒），客户端每隔此时间向 Broker 发送心跳 |
+| `ProtocolVersion` | `string` | `"V500"` | MQTT 协议版本，可选值：`V310`、`V311`、`V500` |
+| `TraceIdPropertyName` | `string?` | `null` | TraceId 属性名称，用于从 MQTT 发布结果的 UserProperties 中提取 TraceId。例如：腾讯云 MQTT 使用 `"$__messageId"`。如果为空或 null，则不提取 TraceId |
+
+**示例：**
+- 腾讯云 MQTT：`"TraceIdPropertyName": "$__messageId"`
+- 标准 MQTT：不配置此字段或设置为 `null`
 
 ---
 

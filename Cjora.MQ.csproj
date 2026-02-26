@@ -17,12 +17,13 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseUrl />
     <PackageProjectUrl>https://github.com/HandsomeChen0407/Cjora.MQ</PackageProjectUrl>
-    <PackageReleaseNotes>修复单体消息消费过慢影响下批次消息消费的问题</PackageReleaseNotes>
+    <PackageReleaseNotes>1、新增  MQTT 协议版本 ProtocolVersion：可选值：V310，V311, V500
+2、新增 TraceId 属性名称（用于从 MQTT 发布结果的 UserProperties 中提取 TraceId），例如：腾讯云 MQTT 使用 "$__messageId" 作为消息ID</PackageReleaseNotes>
     <PackageTags />
     <Product>Cjora.MQ</Product>
     <RepositoryType />
     <RepositoryUrl />
-    <Version>2.3.0</Version>
+    <Version>2.4.0</Version>
     <PackageIcon />
   </PropertyGroup>
 
