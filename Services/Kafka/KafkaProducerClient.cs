@@ -3,7 +3,7 @@ using Cjora.MQ.Options;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 
-namespace Cjora.MQ.Services
+namespace Cjora.MQ.Services.Kafka
 {
     /// <summary>
     /// Kafka 消息队列实现发布功能。

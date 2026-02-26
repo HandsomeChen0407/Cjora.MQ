@@ -2,6 +2,8 @@
 using Cjora.MQ.Interfaces;
 using Cjora.MQ.Options;
 using Cjora.MQ.Services;
+using Cjora.MQ.Services.Kafka;
+using Cjora.MQ.Services.Mqtt;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

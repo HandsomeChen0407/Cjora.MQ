@@ -4,7 +4,7 @@ using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 using System.Threading.Channels;
 
-namespace Cjora.MQ.Services
+namespace Cjora.MQ.Services.Kafka
 {
     /// <summary>
     /// Kafka 消息队列实现消费功能

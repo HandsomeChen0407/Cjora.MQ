@@ -5,7 +5,7 @@ using MQTTnet;
 using System.Buffers;
 using System.Threading.Channels;
 
-namespace Cjora.MQ.Services
+namespace Cjora.MQ.Services.Mqtt
 {
     /// <summary>
     /// MQTT 消息队列实现消费功能
@@ -83,10 +83,12 @@ namespace Cjora.MQ.Services
             var mqttFactory = new MqttClientFactory();
             _mqttClient = mqttFactory.CreateMqttClient();
             // 初始化 MQTT 连接选项
+            var protocolVersion = MqttHelper.ParseProtocolVersion(_profile.Mqtt.ProtocolVersion);
             _mqttClientOptions = new MqttClientOptionsBuilder()
                 .WithTcpServer(_profile.ServiceIP, _profile.ServicePort)
                 .WithCredentials(_profile.Username, _profile.Password)
                 .WithKeepAlivePeriod(TimeSpan.FromSeconds(_profile.Mqtt.KeepAliveSeconds))
+                .WithProtocolVersion(protocolVersion)
                 .Build();
 
             // 注册 MQTT 事件

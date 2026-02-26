@@ -3,10 +3,9 @@ using Cjora.MQ.Options;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
 using MQTTnet.Protocol;
-using System.Buffers;
 using System.Text;
 
-namespace Cjora.MQ.Services
+namespace Cjora.MQ.Services.Mqtt
 {
     /// <summary>
     /// MQTT 消息队列实现发布功能
@@ -65,10 +64,12 @@ namespace Cjora.MQ.Services
             var mqttFactory = new MqttClientFactory();
             _mqttClient = mqttFactory.CreateMqttClient();
             // 初始化 MQTT 连接选项
+            var protocolVersion = MqttHelper.ParseProtocolVersion(_profile.Mqtt.ProtocolVersion);
             _mqttClientOptions = new MqttClientOptionsBuilder()
                 .WithTcpServer(_profile.ServiceIP, _profile.ServicePort)
                 .WithCredentials(_profile.Username, _profile.Password)
                 .WithKeepAlivePeriod(TimeSpan.FromSeconds(_profile.Mqtt.KeepAliveSeconds))
+                .WithProtocolVersion(protocolVersion)
                 .Build();
 
             // 注册 MQTT 事件
@@ -156,14 +157,14 @@ namespace Cjora.MQ.Services
                     .Build();
 
                 var result = await _mqttClient.PublishAsync(msg);
-
+                var traceId = MqttHelper.ExtractTraceId(result, _profile.Mqtt.TraceIdPropertyName);
                 if (result != null && result.IsSuccess)
                 {
-                    _logger.LogInformation($"消息发送成功 【Topic】{topic} 【Payload】{Encoding.UTF8.GetString(payload)}");
+                    _logger.LogInformation($"消息发送成功 【Topic】{topic} 【TraceId】{traceId} 【Payload】{Encoding.UTF8.GetString(payload)}");
                 }
                 else
                 {
-                    _logger.LogError($"消息发送失败 【Topic】{topic} 【Payload】{Encoding.UTF8.GetString(payload)}");
+                    _logger.LogError($"消息发送失败 【Topic】{topic} 【TraceId】{traceId} 【Payload】{Encoding.UTF8.GetString(payload)}");
                 }
             }
             catch (Exception ex)
